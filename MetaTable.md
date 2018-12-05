@@ -74,10 +74,10 @@ print(getmetatable(xiaozhao))
 --输出： table: 00E3B4D0
 print(getmetatable(xiaowang)) 
 --输出： table: 00E384D0
--- (⊙ˍ⊙)!! 他俩居然都是老王的后代
+-- (⊙ˍ⊙)!! 没错，小明和小王有着相同的Y染色体。。
 
 laowang.__add = Set.union()     -- 此处使用元方法改变老王的能力
-Set.print(xiaozhao + xiaowang)  -- 小赵和小王居然能结合了。。。
+Set.print(xiaozhao + xiaowang)  -- 哦吼！这种操作都可以了
 -- 输出： 1, 2, 3, 4, 5, 7, 9
 laowang.__mul = Set.intersection
 Set.print(xiaozhao * xiaowang)
@@ -102,5 +102,73 @@ __eq 等于
 __lt 小于
 __le 小于等于
 ```
-**其余关系类元方法均是由它们转换而来**
-**未完待续。。。。。。
+**其余关系类元方法均是由它们转换而来， 关系类元方法和算术类元方法的使用方法类似，此处就不再赘述**
+**3.库函数定义的元方法**
+**主要是一个tostring方法用于格式化输出，和一个metatable方法用于保护元表**
+```lua
+laowang.__tostring = Set.tostring()
+print(xiaowang)
+
+laowang.__metatable = "Warning!!!"
+print(getmetatable(xiaowang))
+setmetatable(xiaowang, {})
+--注意此处保护元表是指如果有一个表对象继承了这个元表，那么我们不能获取和修改这个表的元表指向，体现再此处为xiaowang的元表只能是laowang
+```
+**4.table访问的元方法**
+**前面是是一些类似运算符重载的操作，接下来的两个方法则直接修改table的行为（不清楚没关系，下面会详细解释）**
+```lua
+--index字段，当访问一个table中不存在的字段时，实际上解释器会去查找一个叫__index的元方法。如果没有该元方法，则访问结果如前述为nil，否则就由这个元方法提供最终结果。
+Window = {}
+--定义窗口原型，用于设置默认值
+Window.prototype = {x = 0, y = 0, width = 1024, height = 768}
+--声明一个元表给新建的表对象继承
+Window.mt = {}
+--声明窗口构造函数
+function Window.new(o)
+    setmetatable(o, Window.mt)
+    return o
+end
+
+
+--定义__index元方法，在其中定义找不到表内元素的行为。此处即：如果找不到元素则返回上述定义的原型中的值，实现了默认值的设置
+Window.mt.__index = function(table, key) --table访问元素时传入的参数，属于常规操作
+    return Window.prototype[key]
+end
+--此处也可以用
+--Window.mt.__index = Window.prototype
+--代替，也就是说__index元方法不仅可以定义为函数，还可以定义为一个表，效果是一样的
+
+
+--创建一个新窗口，并且访问一个它没有的字段
+window = Window.new{x=10, y=20}
+print(window.width)
+-- 输出：1024
+```
+**虽然此处将函数和表赋值给__index变量是等效的，但是实际上函数更为灵活，可以通过函数来实现类似于多重继承和缓存的功能**
+```lua
+--newindex字段和index字段类似，不同的是前者用于给不存在的值赋值时访问，后者在查询时访问
+
+--定义赋值缓存
+Window.cache = {name = "WINDOW", size = 1024}
+Window.mt.__newindex = function(table, key, value)
+    Window.cache[key] = value
+end
+
+window.name = "WINDOW_NEW"
+-- 赋值成功，但是改变的是元表内cache的值
+print(window.name)
+-- 输出： nil
+```
+**这里需要注意一点，当我们使用了__index和__newindex元方法对表的行为进行篡改了之后，我们是不能按原来的方法随意增加和删除表的字段了。**
+```lua
+--试图给表新建一个字段
+window.color = "red"
+print(window.color)
+-- 输出:nil
+
+--试图删除表中已有字段
+window.y = nil
+print(window.nil)
+-- 输出：0
+```
+**未完待续**
